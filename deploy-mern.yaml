@@ -5,11 +5,11 @@
 - name: Configure MongoDB on Private Server
   hosts: db
   become: yes
+  vars_files:
+    - secrets.yml
   vars:
     mongo_admin_user: "admin"
-    mongo_admin_pass: "SuperSecretAdmin123"
     mongo_app_user: "mernuser"
-    mongo_app_pass: "SuperSecretApp123"
     app_db_name: "merndatabase"
 
   tasks:
@@ -39,7 +39,7 @@
       shell: |
         mongosh admin --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_pass }}", roles: [{role: "root", db: "admin"}]})'
         mongosh {{ app_db_name }} --eval 'db.createUser({user: "{{ mongo_app_user }}", pwd: "{{ mongo_app_pass }}", roles: [{role: "readWrite", db: "{{ app_db_name }}"}]})'
-      ignore_errors: yes # Prevents failure if users already exist on subsequent runs
+      ignore_errors: yes
 
     - name: Secure MongoDB (Enable Auth & Bind to Private IP)
       lineinfile:
@@ -47,7 +47,7 @@
         regexp: '^{{ item.key }}'
         line: '{{ item.value }}'
       loop:
-        - { key: '  bindIp:', value: '  bindIp: 0.0.0.0' } # Safe because Terraform Security Groups block external access
+        - { key: '  bindIp:', value: '  bindIp: 0.0.0.0' } 
         - { key: 'security:', value: "security:\n  authorization: 'enabled'" }
       notify: Restart MongoDB
 
@@ -63,12 +63,13 @@
 - name: Deploy MERN Application
   hosts: web
   become: yes
+  vars_files:
+    - secrets.yml
   vars:
     repo_url: "https://github.com/yourusername/your-mern-repo.git"
     app_dir: "/var/www/mern-app"
     db_private_ip: "<db_server_private_ip>"
     mongo_app_user: "mernuser"
-    mongo_app_pass: "SuperSecretApp123"
     app_db_name: "merndatabase"
 
   tasks:
@@ -101,10 +102,32 @@
         version: main
         force: yes
 
+    - name: Configure Backend Environment Variables (.env)
+      become_user: ec2-user
+      copy:
+        dest: "{{ app_dir }}/backend/.env"
+        content: |
+          PORT=3001
+          NODE_ENV=production
+          MONGO_URI=mongodb://{{ mongo_app_user }}:{{ mongo_app_pass }}@{{ db_private_ip }}:27017/{{ app_db_name }}?authSource={{ app_db_name }}
+
     - name: Install Backend Dependencies
       become_user: ec2-user
       npm:
         path: "{{ app_dir }}/backend"
+
+    - name: Start Express Backend with PM2
+      become_user: ec2-user
+      shell: pm2 start index.js --name "mern-backend" || pm2 restart "mern-backend"
+      args:
+        chdir: "{{ app_dir }}/backend"
+
+    - name: Configure Frontend Environment Variables (.env)
+      become_user: ec2-user
+      copy:
+        dest: "{{ app_dir }}/frontend/.env"
+        content: |
+          REACT_APP_BACKEND_URL=http://{{ inventory_hostname }}/api
 
     - name: Install Frontend Dependencies & Build React
       become_user: ec2-user
@@ -113,21 +136,6 @@
         npm run build
       args:
         chdir: "{{ app_dir }}/frontend"
-
-    - name: Configure Environment Variables (.env)
-      become_user: ec2-user
-      copy:
-        dest: "{{ app_dir }}/backend/.env"
-        content: |
-          PORT=5000
-          NODE_ENV=production
-          MONGO_URI=mongodb://{{ mongo_app_user }}:{{ mongo_app_pass }}@{{ db_private_ip }}:27017/{{ app_db_name }}?authSource={{ app_db_name }}
-
-    - name: Start Express Backend with PM2
-      become_user: ec2-user
-      shell: pm2 start server.js --name "mern-backend" || pm2 restart "mern-backend"
-      args:
-        chdir: "{{ app_dir }}/backend"
 
     - name: Configure Nginx to serve React and proxy Express
       copy:
@@ -144,9 +152,9 @@
                   try_files $uri $uri/ /index.html;
               }
 
-              # Reverse proxy API requests to Express backend
+              # Reverse proxy API requests to Express backend running on 3001
               location /api/ {
-                  proxy_pass http://localhost:5000/;
+                  proxy_pass http://localhost:3001/;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection 'upgrade';

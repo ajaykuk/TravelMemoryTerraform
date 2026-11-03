@@ -1,5 +1,10 @@
 node_modules
-.terraform
+.terraform/
+providers/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
 secrets.yaml
 
 
