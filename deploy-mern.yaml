@@ -66,7 +66,7 @@
   vars_files:
     - secrets.yml
   vars:
-    repo_url: "https://github.com/yourusername/your-mern-repo.git"
+    repo_url: "https://github.com/ajaykuk/TravelMemoryTerraform.git"
     app_dir: "/var/www/mern-app"
     db_private_ip: "<db_server_private_ip>"
     mongo_app_user: "mernuser"
@@ -203,3 +203,20 @@
       systemd:
         name: sshd
         state: restarted
+
+
+# ... (your existing VPC, subnets, security groups, and instances remain above)
+
+# ==========================================
+# Outputs
+# ==========================================
+
+output "web_server_public_ip" {
+  description = "The public IP of the web server (used in inventory.ini as [web])"
+  value       = aws_instance.web_server.public_ip
+}
+
+output "db_server_private_ip" {
+  description = "The private IP of the DB server (used in inventory.ini as [db])"
+  value       = aws_instance.db_server.private_ip
+}
