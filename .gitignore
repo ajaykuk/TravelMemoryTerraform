@@ -1,4 +1,8 @@
 node_modules
+.terraform
+secrets.yaml
+
+
 # Logs
 logs
 *.log

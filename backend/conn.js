@@ -1,14 +1,13 @@
 const mongoose = require('mongoose')
-const config = require('./config')
+console.log("-----------------------------------------");
+console.log("DEBUG - The read URI is:", process.env.MONGO_URI);
+console.log("-----------------------------------------");
+const URL = process.env.MONGO_URI
 
-// Strip query selectors like { $gt: '' } from user supplied filters (NoSQL injection guard)
-mongoose.set('sanitizeFilter', true)
-mongoose.set('strictQuery', true)
+mongoose.connect(URL)
+mongoose.Promise = global.Promise
 
 const db = mongoose.connection
-db.on('error', (err) => console.error('DB ERROR:', err.message))
-db.on('disconnected', () => console.warn('DB disconnected'))
+db.on('error', console.error.bind(console, 'DB ERROR: '))
 
-const connect = () => mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 10000 })
-
-module.exports = { db, mongoose, connect }
+module.exports = {db, mongoose}

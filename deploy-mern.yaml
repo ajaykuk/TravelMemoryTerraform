@@ -1,0 +1,197 @@
+---
+# ==========================================
+# 3. Database Server Setup (MongoDB)
+# ==========================================
+- name: Configure MongoDB on Private Server
+  hosts: db
+  become: yes
+  vars:
+    mongo_admin_user: "admin"
+    mongo_admin_pass: "SuperSecretAdmin123"
+    mongo_app_user: "mernuser"
+    mongo_app_pass: "SuperSecretApp123"
+    app_db_name: "merndatabase"
+
+  tasks:
+    - name: Add MongoDB Yum Repository (Amazon Linux 2023)
+      copy:
+        dest: /etc/yum.repos.d/mongodb-org-7.0.repo
+        content: |
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+
+    - name: Install MongoDB
+      dnf:
+        name: mongodb-org
+        state: present
+
+    - name: Start and enable MongoDB service
+      systemd:
+        name: mongod
+        state: started
+        enabled: yes
+
+    - name: Create MongoDB Admin & Application Users
+      shell: |
+        mongosh admin --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_pass }}", roles: [{role: "root", db: "admin"}]})'
+        mongosh {{ app_db_name }} --eval 'db.createUser({user: "{{ mongo_app_user }}", pwd: "{{ mongo_app_pass }}", roles: [{role: "readWrite", db: "{{ app_db_name }}"}]})'
+      ignore_errors: yes # Prevents failure if users already exist on subsequent runs
+
+    - name: Secure MongoDB (Enable Auth & Bind to Private IP)
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^{{ item.key }}'
+        line: '{{ item.value }}'
+      loop:
+        - { key: '  bindIp:', value: '  bindIp: 0.0.0.0' } # Safe because Terraform Security Groups block external access
+        - { key: 'security:', value: "security:\n  authorization: 'enabled'" }
+      notify: Restart MongoDB
+
+  handlers:
+    - name: Restart MongoDB
+      systemd:
+        name: mongod
+        state: restarted
+
+# ==========================================
+# 2 & 4. Web Server & Application Deployment
+# ==========================================
+- name: Deploy MERN Application
+  hosts: web
+  become: yes
+  vars:
+    repo_url: "https://github.com/yourusername/your-mern-repo.git"
+    app_dir: "/var/www/mern-app"
+    db_private_ip: "<db_server_private_ip>"
+    mongo_app_user: "mernuser"
+    mongo_app_pass: "SuperSecretApp123"
+    app_db_name: "merndatabase"
+
+  tasks:
+    - name: Install Node.js, NPM, Git, and Nginx
+      dnf:
+        name: 
+          - nodejs
+          - git
+          - nginx
+        state: present
+
+    - name: Install PM2 globally for process management
+      npm:
+        name: pm2
+        global: yes
+        state: present
+
+    - name: Ensure application directory exists with correct permissions
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Clone the MERN repository
+      become_user: ec2-user
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: main
+        force: yes
+
+    - name: Install Backend Dependencies
+      become_user: ec2-user
+      npm:
+        path: "{{ app_dir }}/backend"
+
+    - name: Install Frontend Dependencies & Build React
+      become_user: ec2-user
+      shell: |
+        npm install
+        npm run build
+      args:
+        chdir: "{{ app_dir }}/frontend"
+
+    - name: Configure Environment Variables (.env)
+      become_user: ec2-user
+      copy:
+        dest: "{{ app_dir }}/backend/.env"
+        content: |
+          PORT=5000
+          NODE_ENV=production
+          MONGO_URI=mongodb://{{ mongo_app_user }}:{{ mongo_app_pass }}@{{ db_private_ip }}:27017/{{ app_db_name }}?authSource={{ app_db_name }}
+
+    - name: Start Express Backend with PM2
+      become_user: ec2-user
+      shell: pm2 start server.js --name "mern-backend" || pm2 restart "mern-backend"
+      args:
+        chdir: "{{ app_dir }}/backend"
+
+    - name: Configure Nginx to serve React and proxy Express
+      copy:
+        dest: /etc/nginx/conf.d/mern.conf
+        content: |
+          server {
+              listen 80;
+              server_name _;
+
+              # Serve React static build files
+              location / {
+                  root {{ app_dir }}/frontend/build;
+                  index index.html index.htm;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              # Reverse proxy API requests to Express backend
+              location /api/ {
+                  proxy_pass http://localhost:5000/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+
+    - name: Remove default Nginx config and restart
+      file:
+        path: /etc/nginx/conf.d/default.conf
+        state: absent
+      notify: Restart Nginx
+
+  handlers:
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+# ==========================================
+# 5. Security Hardening
+# ==========================================
+- name: OS Security Hardening
+  hosts: all
+  become: yes
+  tasks:
+    - name: Disable Root Login via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        validate: /usr/sbin/sshd -t -f %s
+
+    - name: Disable Password Authentication via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        validate: /usr/sbin/sshd -t -f %s
+      notify: Restart SSHD
+
+  handlers:
+    - name: Restart SSHD
+      systemd:
+        name: sshd
+        state: restarted
