@@ -141,3 +141,8 @@ dist
 
 # Uploaded images
 backend/uploads/
+AjayKey*
+AjayKey.pem
+AjayKey.pub
+AjayKey2.pem
+AjayKey2.pub

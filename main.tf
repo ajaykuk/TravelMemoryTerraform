@@ -139,9 +139,9 @@ resource "aws_security_group" "db_sg" {
   }
 
   ingress {
-    description     = "Database port from Web SG"
-    from_port       = 3306 # Change to 5432 for PostgreSQL
-    to_port         = 3306
+    description     = "MongoDB port from Web SG"
+    from_port       = 27017
+    to_port         = 27017
     protocol        = "tcp"
     security_groups = [aws_security_group.web_sg.id]
   }
@@ -218,4 +218,9 @@ resource "aws_instance" "db_server" {
 output "web_server_public_ip" {
   description = "The public IP address of the web server"
   value       = aws_instance.web_server.public_ip
+}
+
+output "db_server_private_ip" {
+  description = "The private IP of the DB server (used in inventory.ini as [db])"
+  value       = aws_instance.db_server.private_ip
 }
