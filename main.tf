@@ -21,7 +21,7 @@ provider "aws" {
 variable "my_ip" {
   description = "Your public IP address for SSH access (e.g., 203.0.113.50/32)"
   type        = string
-  default     = "182.69.182.211/32" # CHANGE THIS to your actual IP address like "x.x.x.x/32"
+  default     = "182.69.176.139/32" # CHANGE THIS to your actual IP address like "x.x.x.x/32"
 }
 
 # -----------------------------------------------------------
