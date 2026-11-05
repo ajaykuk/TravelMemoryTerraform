@@ -29,26 +29,33 @@
         name: mongodb-org
         state: present
 
+    - name: Ensure MongoDB bindIp is set to 0.0.0.0
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp:'
+        line: '  bindIp: 0.0.0.0'
+
     - name: Start and enable MongoDB service
       systemd:
         name: mongod
         state: started
         enabled: yes
 
+    # NOTE: Users must be created BEFORE enabling authorization (or while auth is disabled)
     - name: Create MongoDB Admin & Application Users
       shell: |
         mongosh admin --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_pass }}", roles: [{role: "root", db: "admin"}]})'
         mongosh {{ app_db_name }} --eval 'db.createUser({user: "{{ mongo_app_user }}", pwd: "{{ mongo_app_pass }}", roles: [{role: "readWrite", db: "{{ app_db_name }}"}]})'
       ignore_errors: yes
 
-    - name: Secure MongoDB (Enable Auth & Bind to Private IP)
-      lineinfile:
+    - name: Enable MongoDB Authorization
+      blockinfile:
         path: /etc/mongod.conf
-        regexp: '^{{ item.key }}'
-        line: '{{ item.value }}'
-      loop:
-        - { key: '  bindIp:', value: '  bindIp: 0.0.0.0' } 
-        - { key: 'security:', value: "security:\n  authorization: 'enabled'" }
+        marker: "# {mark} ANSIBLE MANAGED SECURITY BLOCK"
+        insertafter: EOF
+        block: |
+          security:
+            authorization: enabled
       notify: Restart MongoDB
 
   handlers:
@@ -56,37 +63,6 @@
       systemd:
         name: mongod
         state: restarted
-
-    # ... your existing MongoDB installation and user creation tasks ...
-
-    - name: Secure MongoDB (Bind IP and Enable Auth)
-      become: yes
-      block:
-        - name: Update Bind IP to allow web server connection
-          lineinfile:
-            path: /etc/mongod.conf
-            regexp: '^  bindIp:'
-            line: '  bindIp: 0.0.0.0'
-
-    - name: Enable MongoDB Authorization
-      blockinfile:
-            path: /etc/mongod.conf
-            marker: "# {mark} ANSIBLE MANAGED SECURITY BLOCK"
-            insertafter: EOF
-            block: |
-              security:
-                authorization: enabled
-
-    - name: Restart MongoDB to apply security settings
-      systemd:
-        name: mongod
-        state: restarted
-
-# ---------------------------------------------------------
-# The next play for your web server should start right below this:
-- name: Deploy MERN Application
-  hosts: web
-# ...
 
 # ==========================================
 # 2 & 4. Web Server & Application Deployment
@@ -99,14 +75,14 @@
   vars:
     repo_url: "https://github.com/ajaykuk/TravelMemoryTerraform.git"
     app_dir: "/var/www/mern-app"
-    db_private_ip: "<db_server_private_ip>"
+    db_private_ip: "10.0.2.176"
     mongo_app_user: "mernuser"
     app_db_name: "merndatabase"
 
   tasks:
     - name: Install Node.js, NPM, Git, and Nginx
       dnf:
-        name: 
+        name:
           - nodejs
           - git
           - nginx
@@ -234,20 +210,3 @@
       systemd:
         name: sshd
         state: restarted
-
-
-# ... (your existing VPC, subnets, security groups, and instances remain above)
-
-# ==========================================
-# Outputs
-# ==========================================
-
-# output "web_server_public_ip" {
-#   description = "The public IP of the web server (used in inventory.ini as [web])"
-#   value       = aws_instance.web_server.public_ip
-# }
-
-# output "db_server_private_ip" {
-#   description = "The private IP of the DB server (used in inventory.ini as [db])"
-#   value       = aws_instance.db_server.private_ip
-# }
