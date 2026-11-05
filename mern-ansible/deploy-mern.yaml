@@ -29,28 +29,57 @@
         name: mongodb-org
         state: present
 
+    - name: Ensure MongoDB bindIp is set to 0.0.0.0
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp:'
+        line: '  bindIp: 0.0.0.0'
+
+    
     - name: Start and enable MongoDB service
       systemd:
         name: mongod
         state: started
         enabled: yes
+    # - name: Wait for MongoDB to listen on port 27017
+    #   wait_for:
+    #     port: 27017
+    #     delay: 5
+    #     timeout: 30
 
     - name: Create MongoDB Admin & Application Users
       shell: |
-        mongosh admin --eval 'db.createUser({user: "{{ mongo_admin_user }}", pwd: "{{ mongo_admin_pass }}", roles: [{role: "root", db: "admin"}]})'
-        mongosh {{ app_db_name }} --eval 'db.createUser({user: "{{ mongo_app_user }}", pwd: "{{ mongo_app_pass }}", roles: [{role: "readWrite", db: "{{ app_db_name }}"}]})'
+        mongosh "mongodb://127.0.0.1:27017/admin" --eval '
+          db.createUser({
+            user: "{{ mongo_admin_user }}",
+            pwd: "{{ mongo_admin_pass }}",
+            roles: [{ role: "root", db: "admin" }]
+          });
+          db.getSiblingDB("{{ app_db_name }}").createUser({
+            user: "{{ mongo_app_user }}",
+            pwd: "{{ mongo_app_pass }}",
+            roles: [{ role: "readWrite", db: "{{ app_db_name }}" }]
+          });
+        '
+      register: user_creation
+      failed_when: user_creation.rc != 0 and 'already exists' not in user_creation.stderr
       ignore_errors: yes
 
-    - name: Secure MongoDB (Enable Auth & Bind to Private IP)
+   
+    - name: Ensure security block exists in mongod.conf
       lineinfile:
         path: /etc/mongod.conf
-        regexp: '^{{ item.key }}'
-        line: '{{ item.value }}'
-      loop:
-        - { key: '  bindIp:', value: '  bindIp: 0.0.0.0' } 
-        - { key: 'security:', value: "security:\n  authorization: 'enabled'" }
+        line: 'security:'
+        state: present
+        
+    - name: Ensure MongoDB authorization is enabled (Idempotent)
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^(\s*)authorization:'
+        line: '  authorization: enabled'
+        insertafter: '^security:'
       notify: Restart MongoDB
-
+      
   handlers:
     - name: Restart MongoDB
       systemd:
@@ -205,18 +234,3 @@
         state: restarted
 
 
-# ... (your existing VPC, subnets, security groups, and instances remain above)
-
-# ==========================================
-# Outputs
-# ==========================================
-
-# output "web_server_public_ip" {
-#   description = "The public IP of the web server (used in inventory.ini as [web])"
-#   value       = aws_instance.web_server.public_ip
-# }
-
-# output "db_server_private_ip" {
-#   description = "The private IP of the DB server (used in inventory.ini as [db])"
-#   value       = aws_instance.db_server.private_ip
-# }
