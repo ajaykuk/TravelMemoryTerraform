@@ -6,6 +6,8 @@ providers/
 *.tfstate.*
 *.tfstate.backup
 secrets.yaml
+terraform.tfstate
+.DS_Store
 
 
 # Logs
