@@ -69,12 +69,15 @@
 
    
     - name: Ensure security block exists in mongod.conf
+      become: yes
       lineinfile:
         path: /etc/mongod.conf
+        regexp: '^#?security:'
         line: 'security:'
         state: present
         
     - name: Ensure MongoDB authorization is enabled (Idempotent)
+      become: yes
       lineinfile:
         path: /etc/mongod.conf
         regexp: '^(\s*)authorization:'
