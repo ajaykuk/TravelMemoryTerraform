@@ -16,12 +16,17 @@ app.set('trust proxy', config.trustProxy)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({
     origin: (origin, cb) => {
-        // Requests without an Origin header (curl, server-to-server, same-origin) are allowed
-        if (!origin || config.corsOrigins.includes('*') || config.corsOrigins.includes(origin)) return cb(null, true)
-        cb(new Error(`CORS: origin ${origin} is not allowed`))
+        // Explicitly define your new AWS web server public IP
+        const allowedAwsIp = 'http://3.224.114.191';
+
+        // Requests without an Origin header, origins in your config, or the new AWS IP are allowed
+        if (!origin || config.corsOrigins.includes('*') || config.corsOrigins.includes(origin) || origin === allowedAwsIp) {
+            return cb(null, true);
+        }
+        cb(new Error(`CORS: origin ${origin} is not allowed`));
     },
     methods: ['GET', 'POST'],
-}))
+}));
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 500,
