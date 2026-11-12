@@ -36,18 +36,19 @@
         line: '  bindIp: 127.0.0.1,{{ db_private_ip | default("10.0.2.182") }}'
       notify: Restart MongoDB
 
-    
     - name: Start and enable MongoDB service
       become: yes
       systemd:
         name: mongod
         state: started
         enabled: yes
-    # - name: Wait for MongoDB to listen on port 27017
-    #   wait_for:
-    #     port: 27017
-    #     delay: 5
-    #     timeout: 30
+
+    - name: Check if MongoDB is already secured
+      become: yes
+      command: grep -q "authorization: enabled" /etc/mongod.conf
+      register: mongo_auth_check
+      ignore_errors: yes
+      changed_when: false
 
     - name: Create MongoDB Admin & Application Users
       shell: |
@@ -64,10 +65,9 @@
           });
         '
       register: user_creation
+      when: mongo_auth_check.rc != 0
       failed_when: user_creation.rc != 0 and 'already exists' not in user_creation.stderr
-      # ignore_errors: yes
 
-   
     - name: Ensure security block exists in mongod.conf
       become: yes
       lineinfile:
@@ -198,6 +198,7 @@
           }
 
     - name: Remove default Nginx config and restart
+      become: yes
       file:
         path: /etc/nginx/conf.d/default.conf
         state: absent
@@ -244,5 +245,3 @@
       systemd:
         name: sshd
         state: restarted
-
-
