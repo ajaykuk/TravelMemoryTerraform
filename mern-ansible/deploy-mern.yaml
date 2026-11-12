@@ -1,4 +1,4 @@
----
+
 # ==========================================
 # 3. Database Server Setup (MongoDB)
 # ==========================================
@@ -45,7 +45,7 @@
 
     - name: Check if MongoDB is already secured
       become: yes
-      command: grep -q "authorization: enabled" /etc/mongod.conf
+      command: 'grep -q "authorization: enabled" /etc/mongod.conf'
       register: mongo_auth_check
       ignore_errors: yes
       changed_when: false
