@@ -17,7 +17,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({
     origin: (origin, cb) => {
         // Explicitly define your new AWS web server public IP
-        const allowedAwsIp = 'http://3.239.63.103';
+        const allowedAwsIp = '107.23.187.128';
 
         // Requests without an Origin header, origins in your config, or the new AWS IP are allowed
         if (!origin || config.corsOrigins.includes('*') || config.corsOrigins.includes(origin) || origin === allowedAwsIp) {
