@@ -161,7 +161,7 @@
       copy:
         dest: "{{ app_dir }}/frontend/.env"
         content: |
-          REACT_APP_BACKEND_URL=https://{{ inventory_hostname }}/api
+          REACT_APP_BACKEND_URL=https://travelmemory.live/api
 
     - name: Install Frontend Dependencies & Build React
       become_user: ec2-user
@@ -178,8 +178,13 @@
           server {
               listen 80 default_server;
               listen [::]:80 default_server;
-              server_name 107.23.187.128
+              listen 443 ssl default_server;
+              listen [::]:443 ssl default_server;
+              server_name 107.23.187.128 travelmemory.live www.travelmemory.live;
               # server_name travelmemory.live www.travelmemory.live;
+              # SSL Certificate paths (update with your actual paths or generated cert files)
+                ssl_certificate /etc/letsencrypt/live/107.23.187.128/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/107.23.187.128/privkey.pem;
               # Allow Let's Encrypt validation requests
               location /.well-known/acme-challenge/ {
               root {{ app_dir }}/frontend/build;
@@ -217,25 +222,25 @@
         state: started
         enabled: yes
     # --- NEW CERTBOT TASKS START HERE ---
-    - name: Install Certbot and Nginx plugin
-      become: yes
-      dnf:
-        name: 
-          - certbot
-          - python3-certbot-nginx
-        state: present
+    # - name: Install Certbot and Nginx plugin
+    #   become: yes
+    #   dnf:
+    #     name: 
+    #       - certbot
+    #       - python3-certbot-nginx
+    #     state: present
 
-    - name: Check if SSL certificate already exists
-      become: yes
-      stat:
-        path: /etc/letsencrypt/live/travelmemory.live/fullchain.pem
-      register: ssl_cert
+    # - name: Check if SSL certificate already exists
+    #   become: yes
+    #   stat:
+    #     path: /etc/letsencrypt/live/travelmemory.live/fullchain.pem
+    #   register: ssl_cert
 
-    - name: Generate SSL certificate and configure Nginx (Idempotent)
-      become: yes
-      command: >
-        certbot --nginx -d travelmemory.live --non-interactive --agree-tos -m admin100@yopmail.com --redirect
-      when: not ssl_cert.stat.exists
+    # - name: Generate SSL certificate and configure Nginx (Idempotent)
+    #   become: yes
+    #   command: >
+    #     certbot --nginx -d travelmemory.live --non-interactive --agree-tos -m admin100@yopmail.com --redirect
+    #   when: not ssl_cert.stat.exists
     # --- NEW CERTBOT TASKS END HERE ---
 
   handlers:
