@@ -209,6 +209,19 @@ resource "aws_instance" "web_server" {
   tags = { Name = "web-server" }
 }
 
+# -> ADD THIS: Allocate a permanent Elastic IP
+resource "aws_eip" "web_eip" {
+  domain     = "vpc"
+  depends_on = [aws_internet_gateway.igw]
+  tags       = { Name = "web-server-eip" }
+}
+
+# -> ADD THIS: Bind the Elastic IP to the web server instance
+resource "aws_eip_association" "web_eip_assoc" {
+  instance_id   = aws_instance.web_server.id
+  allocation_id = aws_eip.web_eip.id
+}
+
 resource "aws_instance" "db_server" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = "t2.micro"
