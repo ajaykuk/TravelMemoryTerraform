@@ -178,6 +178,10 @@
           server {
               listen 80;
               server_name travelmemory.live www.travelmemory.live;
+              # Allow Let's Encrypt validation requests
+              location /.well-known/acme-challenge/ {
+              root {{ app_dir }}/frontend/build;
+              }
 
               # Serve React static build files
               location / {
