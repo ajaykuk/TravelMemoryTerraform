@@ -161,7 +161,7 @@
       copy:
         dest: "{{ app_dir }}/frontend/.env"
         content: |
-          REACT_APP_BACKEND_URL=https://travelmemory.live/api
+          REACT_APP_BACKEND_URL=https://{{ inventory_hostname }}/api
 
     - name: Install Frontend Dependencies & Build React
       become_user: ec2-user
