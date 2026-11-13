@@ -178,7 +178,8 @@
           server {
               listen 80 default_server;
               listen [::]:80 default_server;
-              server_name travelmemory.live www.travelmemory.live;
+              server_name 107.23.187.128
+              # server_name travelmemory.live www.travelmemory.live;
               # Allow Let's Encrypt validation requests
               location /.well-known/acme-challenge/ {
               root {{ app_dir }}/frontend/build;
