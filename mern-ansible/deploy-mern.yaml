@@ -183,12 +183,12 @@
               server_name 107.23.187.128 travelmemory.live www.travelmemory.live;
               # server_name travelmemory.live www.travelmemory.live;
               # SSL Certificate paths (update with your actual paths or generated cert files)
-                ssl_certificate /etc/letsencrypt/live/107.23.187.128/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/107.23.187.128/privkey.pem;
+              #   ssl_certificate /etc/letsencrypt/live/107.23.187.128/fullchain.pem;
+              #   ssl_certificate_key /etc/letsencrypt/live/107.23.187.128/privkey.pem;
 
-                ssl_certificate /etc/letsencrypt/live/travelmemory.live/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/travelmemory.live/privkey.pem;
-              # Allow Let's Encrypt validation requests
+              #   ssl_certificate /etc/letsencrypt/live/travelmemory.live/fullchain.pem;
+              #   ssl_certificate_key /etc/letsencrypt/live/travelmemory.live/privkey.pem;
+              # # Allow Let's Encrypt validation requests
               location /.well-known/acme-challenge/ {
               root {{ app_dir }}/frontend/build;
               }
