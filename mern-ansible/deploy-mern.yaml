@@ -196,7 +196,6 @@
                   proxy_cache_bypass $http_upgrade;
               }
           }
-      notify: Reload Nginx
 
     - name: Remove default Nginx config and restart
       become: yes
