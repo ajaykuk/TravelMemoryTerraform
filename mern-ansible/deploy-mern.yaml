@@ -33,7 +33,7 @@
       lineinfile:
         path: /etc/mongod.conf
         regexp: '^  bindIp:'
-        line: '  bindIp: 127.0.0.1,{{ db_private_ip | default("10.0.2.182") }}'
+        line: '  bindIp: 127.0.0.1,{{ db_private_ip | default("10.0.2.188") }}'
       notify: Restart MongoDB
 
     - name: Start and enable MongoDB service
