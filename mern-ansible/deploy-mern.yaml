@@ -176,7 +176,8 @@
         dest: /etc/nginx/conf.d/mern.conf
         content: |
           server {
-              listen 80;
+              listen 80 default_server;
+              listen [::]:80 default_server;
               server_name travelmemory.live www.travelmemory.live;
               # Allow Let's Encrypt validation requests
               location /.well-known/acme-challenge/ {
