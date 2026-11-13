@@ -177,7 +177,7 @@
         content: |
           server {
               listen 80;
-              server_name travelmemory.live;
+              server_name travelmemory.live www.travelmemory.live;
 
               # Serve React static build files
               location / {
@@ -196,6 +196,7 @@
                   proxy_cache_bypass $http_upgrade;
               }
           }
+      notify: Reload Nginx
 
     - name: Remove default Nginx config and restart
       become: yes
