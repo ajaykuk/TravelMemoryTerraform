@@ -102,7 +102,7 @@
   vars:
     repo_url: "https://github.com/ajaykuk/TravelMemoryTerraform.git"
     app_dir: "/var/www/mern-app"
-    db_private_ip: "10.0.2.182"
+    db_private_ip: "10.0.2.188"
     mongo_app_user: "mernuser"
     app_db_name: "merndatabase"
 
