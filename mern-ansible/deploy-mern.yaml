@@ -144,7 +144,9 @@
           PORT=3001
           NODE_ENV=production
           MONGO_URI=mongodb://{{ mongo_app_user }}:{{ mongo_app_pass }}@{{ db_private_ip }}:27017/{{ app_db_name }}?authSource={{ app_db_name }}
-
+          UPLOAD_DIR=uploads
+          MAX_UPLOAD_MB=6
+          CORS_ORIGIN=http://localhost:3000, http://{{ inventory_hostname }}, http://travelmemory.live,www.travelmemory.live
     - name: Install Backend Dependencies
       become_user: ec2-user
       npm:
@@ -162,7 +164,7 @@
         dest: "{{ app_dir }}/frontend/.env"
         content: |
           REACT_APP_BACKEND_URL=http://{{ inventory_hostname }}/api
-
+          
     - name: Install Frontend Dependencies & Build React
       become_user: ec2-user
       shell: |
