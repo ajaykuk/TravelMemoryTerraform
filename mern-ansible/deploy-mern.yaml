@@ -161,7 +161,7 @@
       copy:
         dest: "{{ app_dir }}/frontend/.env"
         content: |
-          REACT_APP_BACKEND_URL=https://travelmemory.live/api
+          REACT_APP_BACKEND_URL=http://{{ inventory_hostname }}/api
 
     - name: Install Frontend Dependencies & Build React
       become_user: ec2-user
@@ -178,20 +178,21 @@
           server {
               listen 80 default_server;
               listen [::]:80 default_server;
-              listen 443 ssl default_server;
-              listen [::]:443 ssl default_server;
-              server_name 107.23.187.128 travelmemory.live www.travelmemory.live;
-              # server_name travelmemory.live www.travelmemory.live;
-              # SSL Certificate paths (update with your actual paths or generated cert files)
-              #   ssl_certificate /etc/letsencrypt/live/107.23.187.128/fullchain.pem;
-              #   ssl_certificate_key /etc/letsencrypt/live/107.23.187.128/privkey.pem;
+              #listen 443 ssl default_server;
+              # listen [::]:443 ssl default_server;
+              server_name {{ inventory_hostname }} travelmemory.live www.travelmemory.live;
 
-              #   ssl_certificate /etc/letsencrypt/live/travelmemory.live/fullchain.pem;
-              #   ssl_certificate_key /etc/letsencrypt/live/travelmemory.live/privkey.pem;
-              # # Allow Let's Encrypt validation requests
-              location /.well-known/acme-challenge/ {
-              root {{ app_dir }}/frontend/build;
-              }
+              # Ignore SSL Certificate paths if commented out else not.
+                 #ssl_certificate /etc/letsencrypt/live/107.23.187.128/fullchain.pem;
+                 #ssl_certificate_key /etc/letsencrypt/live/107.23.187.128/privkey.pem;
+
+                 #ssl_certificate /etc/letsencrypt/live/travelmemory.live/fullchain.pem;
+                 #ssl_certificate_key /etc/letsencrypt/live/travelmemory.live/privkey.pem;
+
+              # Allow Let's Encrypt validation requests, ignore if commented out.
+              # location /.well-known/acme-challenge/ {
+              # root {{ app_dir }}/frontend/build;
+              # }
 
               # Serve React static build files
               location / {
